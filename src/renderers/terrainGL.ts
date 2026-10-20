@@ -25,6 +25,9 @@ export function createTerrainGL(canvas:HTMLCanvasElement,rows:Row[]):TerrainGL|u
   const buffer=(data:Float32Array)=>{const b=gl.createBuffer()!;gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);return b;};
   const lines=buffer(new Float32Array(lineData)),marks=buffer(new Float32Array(markData)),glyphs=gl.createBuffer()!,atlas=gl.createTexture()!;
   const totalGlyphs=rows.reduce((sum,row)=>sum+row.glyphs.length,0),glyphData=new Float32Array(totalGlyphs*6*5);
+  // Keep the original six vertices and paint order without allocating a quad
+  // and six tuples for every digit on every high-refresh display tick.
+  const quad=[-4,-24,0,0,28,-24,1,0,-4,8,0,1,-4,8,0,1,28,-24,1,0,28,8,1,1];
   let atlasWidth=512,atlasHeight=Math.ceil(rows.length*10/16)*32;
   const bindPoint=(p:WebGLProgram,b:WebGLBuffer,stride:number)=>{gl.bindBuffer(gl.ARRAY_BUFFER,b);const location=gl.getAttribLocation(p,'point');gl.enableVertexAttribArray(location);gl.vertexAttribPointer(location,stride===16?4:2,gl.FLOAT,false,stride,0);};
   const fieldPoint=gl.getAttribLocation(field,'point'),glyphPoint=gl.getAttribLocation(digits,'point'),glyphUV=gl.getAttribLocation(digits,'texcoord'),glyphAlpha=gl.getAttribLocation(digits,'alpha');
@@ -49,7 +52,7 @@ export function createTerrainGL(canvas:HTMLCanvasElement,rows:Row[]):TerrainGL|u
           const cycle=Math.floor(time*(.6+glyph.seed*.7)+glyph.seed*40),index=rowIndex*10+((cycle+Math.floor(glyph.seed*10))%10+10)%10;
           const alpha=(.21+d*.46)*(.65+.35*Math.sin(time*2+glyph.seed*20)**2),scale=atlasWidth/512;
           const u=(index%16)*32*scale/atlasWidth,v=Math.floor(index/16)*32*scale/atlasHeight,du=32*scale/atlasWidth,dv=32*scale/atlasHeight;
-          for(const [dx,dy,ux,vy] of [[-4,-24,0,0],[28,-24,1,0],[-4,8,0,1],[-4,8,0,1],[28,-24,1,0],[28,8,1,1]]) {glyphData[at++]=x+dx*cos-dy*sin;glyphData[at++]=y+dx*sin+dy*cos;glyphData[at++]=u+ux*du;glyphData[at++]=v+vy*dv;glyphData[at++]=alpha;}
+          for(let vertex=0;vertex<24;vertex+=4) {const dx=quad[vertex],dy=quad[vertex+1];glyphData[at++]=x+dx*cos-dy*sin;glyphData[at++]=y+dx*sin+dy*cos;glyphData[at++]=u+quad[vertex+2]*du;glyphData[at++]=v+quad[vertex+3]*dv;glyphData[at++]=alpha;}
         }
       }
       gl.useProgram(digits);gl.uniform1f(glyphOpacity,opacity);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,atlas);

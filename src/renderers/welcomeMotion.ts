@@ -16,7 +16,8 @@ const value=(f:number,keys:number[][])=>{let v=keys[0][1];for(let i=0;i<keys.len
 const svgNS='http://www.w3.org/2000/svg';
 export function createWelcomeMotion(){
  const root=document.querySelector<SVGSVGElement>('#interface')!,defs=root.querySelector('defs')!;
- const node=(id:string)=>document.querySelector<HTMLElement|SVGElement>(`#${id}`)!;
+ const nodes=new Map<string,HTMLElement|SVGElement>();
+ const node=(id:string)=>{let element=nodes.get(id);if(!element){element=document.querySelector<HTMLElement|SVGElement>(`#${id}`)!;nodes.set(id,element);}return element;};
  const set=(element:Element,key:string,n:number|string)=>{const text=String(n);if(element.getAttribute(key)!==text)element.setAttribute(key,text);};
  const show=(element:Element,alpha:number)=>{const s=(element as SVGElement).style,a=String(alpha),v=alpha>0?'visible':'hidden';if(s.opacity!==a)s.opacity=a;if(s.visibility!==v)s.visibility=v;};
  const make=(name:string,attrs:Record<string,string|number>={})=>{const e=document.createElementNS(svgNS,name);for(const[k,v]of Object.entries(attrs))set(e,k,v);return e;};
@@ -49,7 +50,9 @@ export function createWelcomeMotion(){
    const slices=Array.from({length:16},(_,j)=>{
      const clip=make('clipPath',{id:`welcome-slice-${i}-${j}`,clipPathUnits:'userSpaceOnUse'});clip.append(make('rect',{x:j*box[2]/16-.15,y:-5,width:box[2]/16+.3,height:box[3]+10}));defs.append(clip);
      const slice=make('g'),cut=make('g',{'clip-path':`url(#welcome-slice-${i}-${j})`});cut.append(make('use',{href:`#welcome-glyph-${i}`}));slice.append(cut);group.append(slice);return slice;
-   });const full=make('use',{href:`#welcome-glyph-${i}`});group.append(full);return{group,blur,slices,full,box,fragmented:undefined as boolean|undefined};
+   });const full=make('use',{href:`#welcome-glyph-${i}`});group.append(full);
+   const channels=Array.from({length:8},(_,j)=>tracks[i].map(k=>[k[0],k[j+1]??0]));
+   return{group,blur,slices,full,box,channels,fragmented:undefined as boolean|undefined};
  });
  const bar=node('welcome-bottom'),barRects=bar.querySelectorAll('rect'),barEdges=bar.querySelectorAll('path');
  let previous:number|undefined;
@@ -73,15 +76,16 @@ export function createWelcomeMotion(){
    set(barRects[1],'width',Math.max(0,barW-2)*progress);for(const[e,i]of [...barEdges].entries())set(i,'d',`M${barX} ${e===0?721:705}h${barW}`);
    const lineW=value(f,[[499,13],[501,60],[503,78],[505,168],[507,370],[509,435],[511,509],[515,553],[520,561]]),lineX=value(f,[[499,952],[501,928],[503,930],[505,914],[507,864],[509,859],[511,851],[515,845],[520,846]]);
    show(node('welcome-underline'),f>=499?1:0);set(node('welcome-underline'),'d',`M${lineX} 595h${lineW}`);node('welcome-underline').removeAttribute('stroke-dasharray');
-   for(const[letter,i]of letters.map((g,i)=>[g,i] as const)){
+   for(let i=0;i<letters.length;i++){
+     const letter=letters[i];
      const {group,blur,slices,full,box}=letter;
      if(f<tracks[i][0][0]){show(group,0);continue;}
-     const keys=tracks[i],pose=Array.from({length:8},(_,j)=>value(f,keys.map(k=>[k[0],k[j+1]??0])));
+     const keys=tracks[i],pose=letter.channels.map(channel=>value(f,channel));
      const[x,y,w,h,opacity,bx,by,roll]=pose;show(group,f>=keys[0][0]?opacity:0);set(group,'transform',`translate(${x} ${y-box[3]+h}) scale(${w/box[2]} 1)`);
      set(blur,'stdDeviation',`${bx} ${by}`);if(bx||by)set(group,'filter',`url(#welcome-soft-${i})`);else group.removeAttribute('filter');
      const edgeReveal=value(f,[[492,.22],[493,.32],[494,.5],[495,.7],[497,.9],[499,1.2]]);
      const fragmented=roll>.0001||(i===1&&f<499);full.style.display=fragmented?'none':'';show(full,fragmented?0:1);set(full,'transform',`matrix(1 0 0 ${h/box[3]} 0 ${box[3]-h})`);
-     if(fragmented)for(const[slice,j]of slices.map((g,j)=>[g,j] as const)){const u=(j+.5)/16,sy=Math.max(.02,h/box[3]-roll*u**.8);set(slice,'transform',`matrix(1 0 0 ${sy} 0 ${box[3]*(1-sy)})`);slice.style.display='';show(slice,i===1?.2+.8*clamp((edgeReveal-u)*4+.5):1);}
+     if(fragmented)for(let j=0;j<slices.length;j++){const slice=slices[j],u=(j+.5)/16,sy=Math.max(.02,h/box[3]-roll*u**.8);set(slice,'transform',`matrix(1 0 0 ${sy} 0 ${box[3]*(1-sy)})`);slice.style.display='';show(slice,i===1?.2+.8*clamp((edgeReveal-u)*4+.5):1);}
      else if(letter.fragmented!==false)for(const slice of slices){slice.style.display='none';show(slice,0);}
      letter.fragmented=fragmented;
    }
