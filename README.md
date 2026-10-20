@@ -2,6 +2,10 @@
 
 独立可运行的登录开屏：旋转粒子地球、双螺旋、账户密码、电源登录、身份确认、权限读取和 WELCOME 动画，含对应音频。
 
+## 在线访问
+
+GitHub Pages：[打开登录界面](https://kalsook041.github.io/RhineLab-frontend/)。`main`更新会自动构建并发布纯登录`dist`，不包含工作台。部署方法和验证说明见[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)。
+
 ## 运行
 
 需要 Node.js 22.12+（或兼容 Vite 8 的更新版本）。

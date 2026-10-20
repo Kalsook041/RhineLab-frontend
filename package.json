@@ -6,10 +6,12 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
+    "build:pages": "npm run build -- --base=/RhineLab-frontend/ --emptyOutDir",
     "preview": "vite preview --host 127.0.0.1",
     "typecheck": "tsc --noEmit",
     "test": "playwright test",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:pages": "npm run build:pages && playwright test -c playwright.pages.config.ts"
   },
   "dependencies": {
     "gsap": "3.15.0"

@@ -13,9 +13,9 @@ export async function createNativeBackground(canvas: HTMLCanvasElement, fail: ()
   if (!ctx) { fail(); return { render() {}, resize() {}, destroy() {} }; }
   ctx.fillStyle='#e5e4dd';ctx.fillRect(0,0,1920,1080);
   let map: number[][] = [];
-  try { map = await (await fetch('/assets/native/world-points.json')).json(); } catch { fail(); }
+  try { map = await (await fetch(`${import.meta.env.BASE_URL}assets/native/world-points.json`)).json(); } catch { fail(); }
   let globeGeometry:GlobePoint[]=[];
-  try { const response=await fetch('/assets/native/globe-points.json');if(response.ok)globeGeometry=await response.json(); } catch { /* The map supplies a procedural fallback. */ }
+  try { const response=await fetch(`${import.meta.env.BASE_URL}assets/native/globe-points.json`);if(response.ok)globeGeometry=await response.json(); } catch { /* The map supplies a procedural fallback. */ }
   let particles:ParticleBatch|undefined;
   try{particles=createParticleBatch();}catch{particles=undefined;}
   const opening=createOpeningParticles(ctx,globeGeometry,map,particles);
