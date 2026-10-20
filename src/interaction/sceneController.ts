@@ -75,7 +75,9 @@ export function createSceneController(): { destroy(): void } {
     // holds on the existing field, so neither background nor corner may rewind.
     if(!preserveMotion){ambientOffset=0;cornerIdleOffset=0;}
     sample.time = clampTime(time); render(true);
-    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    // Debug seeks wait for paint; natural holds must keep the particle ticker
+    // running immediately instead of freezing it for two presentation frames.
+    if(!preserveMotion)await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
     if (id !== generation || disposed) return;
     if (state === 'welcome') el('welcome-title').focus({ preventScroll: true });
   }
@@ -93,7 +95,7 @@ export function createSceneController(): { destroy(): void } {
       if(target===SOURCE_TIMING.end)audio.finish();
       void seek(target,target===SOURCE_TIMING.end,true).then(() => {
         if(disposed||generation!==completed)return;
-        ambientHold=true;ambientTick=undefined;
+        ambientHold=true;
         el('announcer').textContent = target === SOURCE_TIMING.hold ? '电源已就绪，请输入账户和密码，点击电源或按 Enter 登录。' : 'WELCOME。按 R 重新播放。';
       });
     };
@@ -188,7 +190,7 @@ export function createSceneController(): { destroy(): void } {
       target.style.transform=`translate(${(width-1920*scale)/2}px,${(height-1080*scale)/2}px) scale(${scale})`;
       target.style.setProperty('--scale',String(scale));
     }
-    background?.resize(cover);render(true);
+    foreground?.resize(width,height);background?.resize(cover);render(true);
   };
   const observer = new ResizeObserver(resize); observer.observe(stage);
   const preferenceChange = () => { if (reduced.matches) { backgroundMotion = false; el('motion').setAttribute('aria-checked', 'false'); void seek(sample.time > SOURCE_TIMING.hold ? SOURCE_TIMING.end : SOURCE_TIMING.hold); } };

@@ -24,7 +24,7 @@ const arcPath = (radius:number,start:number,sweep:number) => {
 };
 const powerGrowth=[[72,1],[73,3],[74,6.5],[75,11],[76,11],[77,17],[78,27],[79,35],[80,49],[81,67],[82,67],[83,91],[84,125],[85,159],[86,186.5],[87,206.5],[88,206.5],[89,222.5],[90,233.5],[91,242.5],[92,249.5],[93,255.5],[94,255.5],[95,260.5],[96,264],[97,266.5],[98,267.2],[99,268.5],[100,268.5],[101,269.5],[102,270]];
 
-export function createNativeInterface(): { render(frame: number,cornerTime?:number,reduced?:boolean,motionFrame?:number): void;renderBrand(frame:number,cornerTime:number,reduced?:boolean):void } {
+export function createNativeInterface(): { resize(width:number,height:number):void;render(frame: number,cornerTime?:number,reduced?:boolean,motionFrame?:number): void;renderBrand(frame:number,cornerTime:number,reduced?:boolean):void } {
   const nodes = new Map<string, SVGElement | HTMLElement>();
   for (const node of document.querySelectorAll<SVGElement | HTMLElement>('[id]')) nodes.set(node.id, node);
   const node = (id: string) => nodes.get(id)!;
@@ -64,6 +64,9 @@ export function createNativeInterface(): { render(frame: number,cornerTime?:numb
   const authMessage=authTitle.textContent!;
   const welcome=createWelcomeMotion();
   const brand=createBrandMotion();
+  let marginX=0,marginY=0;
+  const resize=(width:number,height:number)=>{const scale=Math.min(width/1920,height/1080);marginX=(width/scale-1920)/2;marginY=(height/scale-1080)/2;brand.resize(width,height);};
+  resize(node('stage').clientWidth,node('stage').clientHeight);
   // Each source character arrives from above; keep the full-string fitting
   // measured above, so typing cannot change the completed line's proportions.
   const requestCN=node('request-cn').querySelector('text')!;
@@ -80,7 +83,7 @@ export function createNativeInterface(): { render(frame: number,cornerTime?:numb
   }
   let previousFrame=-1;
   const spinnerTicks=[...node('spinner').querySelectorAll('path')];
-  return {renderBrand:brand.render, render(f,cornerTime=f/30,reduced=false,motionFrame=f) {
+  return {resize,renderBrand:brand.render, render(f,cornerTime=f/30,reduced=false,motionFrame=f) {
     brand.render(motionFrame,cornerTime,reduced);
     node('interface').dataset.frame = String(f);
     node('interface').dataset.motionFrame = String(motionFrame);
@@ -93,8 +96,6 @@ export function createNativeInterface(): { render(frame: number,cornerTime?:numb
     attr('access-line','stroke-dasharray',`${334*ramp(motionFrame,24,39)} 334`);
     const brandFade = f < 300 ? 1 : 1-ramp(motionFrame,300,305);
     show('credit',brandFade);
-    const stage=node('stage'),scale=Math.min(stage.clientWidth/1920,stage.clientHeight/1080);
-    const marginX=(stage.clientWidth/scale-1920)/2,marginY=(stage.clientHeight/scale-1080)/2;
     attr('credit','transform',`translate(${marginX} ${marginY})`);
     reveal('credit-year-fill',f,135,140);reveal('credit-year-outline',f,135,140);reveal('credit-line',f,127,137);reveal('credit-name',f,127,137);
     show('credit',f>=121 ? brandFade : 0);

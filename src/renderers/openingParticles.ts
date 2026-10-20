@@ -1,6 +1,7 @@
 /** Source-derived vector topology plus continuous procedural motion.
  * No frame textures or sampled particle trajectories are used at runtime. */
 import {createRightHelix} from './rightHelix';
+import type {ParticleBatch} from './particleBatch';
 export type GlobePoint = [number,number,number,number,number];
 const TAU=Math.PI*2;
 const clamp=(x:number)=>Math.max(0,Math.min(1,x));
@@ -59,7 +60,7 @@ function trace(path:Cubic[],count:number):Float32Array {
   }return result;
 }
 
-export function createOpeningParticles(ctx:CanvasRenderingContext2D,geometry:GlobePoint[],map:number[][]) {
+export function createOpeningParticles(ctx:CanvasRenderingContext2D,geometry:GlobePoint[],map:number[][],batch?:ParticleBatch) {
   // Use the complete PSD land mask, rather than mirroring the visible source
   // hemisphere. The latter showed the same continents again after half a turn.
   // The source is a translucent Form globe: the far-side continents remain
@@ -79,7 +80,7 @@ export function createOpeningParticles(ctx:CanvasRenderingContext2D,geometry:Glo
       reference?.[3]??(.9+hash(i)*.5),reference?.[4]??(.25+hash(i+9)*.3)];
   }):geometry;
   const count=1350,initial=strandPaths.map(path=>trace(path,count));
-  const rightHelix=createRightHelix(ctx);
+  const rightHelix=createRightHelix(ctx,batch);
   const seeds=Array.from({length:count},(_,i)=>({a:hash(i+50),b:hash(i+5100),c:hash(i+8500),size:.65+hash(i+130)*.55}));
   // Only a failed geographic fetch uses the traced-hemisphere fallback.
   const surface=map.length?cloud:[...cloud,...cloud.filter(p=>p[2]>.025).map(([x,y,z,size,strength]):GlobePoint=>[-x,y,-z,size,strength])];
@@ -104,7 +105,7 @@ export function createOpeningParticles(ctx:CanvasRenderingContext2D,geometry:Glo
       particle.size=size*1.12*(.78+.22*Math.max(0,z))/(map.length?1:(.78+.22*Math.abs(pz)))*sizeScale;
     }
     projected.sort((a,b)=>a.z-b.z);
-    for(const p of projected)if(p.alpha>.002){ctx.globalAlpha=p.alpha;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,TAU);ctx.fill();}
+    for(const p of projected)if(p.alpha>.002){if(batch?.active)batch.circle(p.x,p.y,p.size,p.alpha,'globe');else{ctx.globalAlpha=p.alpha;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,TAU);ctx.fill();}}
     ctx.globalAlpha=1;
   }
   function orbits(frame:number,time:number):void {
@@ -141,9 +142,9 @@ export function createOpeningParticles(ctx:CanvasRenderingContext2D,geometry:Glo
         const tangent=(seed.c-.5)*80*local;
         x+=normal+tangent*.57+local*9*Math.sin(u*.021+time*2+seed.a*3)+(seed.a-.5)*3.5;
         y+=normal*.7-tangent*.82+local*7*Math.cos(u*.018-time*1.4)+(seed.b-.5)*1.8;
-        ctx.globalAlpha=alpha*(.5+seed.a*.28)*(1-local*(.2+seed.c*.35))*(1-local*(1-cloudDim));
+        const pointAlpha=alpha*(.5+seed.a*.28)*(1-local*(.2+seed.c*.35))*(1-local*(1-cloudDim));
         const radius=seed.size+local*.5*(.7+seed.b*.5);
-        ctx.beginPath();ctx.arc(x,y,radius,0,TAU);ctx.fill();
+        if(batch?.active)batch.circle(x,y,radius,pointAlpha);else{ctx.globalAlpha=pointAlpha;ctx.beginPath();ctx.arc(x,y,radius,0,TAU);ctx.fill();}
       }
     }
     rightHelix.render(frame,time,alpha);

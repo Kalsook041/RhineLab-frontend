@@ -1,4 +1,5 @@
 /** Native 3D double helix, projected into the reference's pale right column. */
+import type {ParticleBatch} from './particleBatch';
 const TAU=Math.PI*2,PITCH=674,COUNT=900,STRIDE=6;
 const clamp=(n:number)=>Math.max(0,Math.min(1,n));
 const hash=(n:number)=>{const x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x);};
@@ -9,7 +10,7 @@ const correction=(frame:number)=>{
   }return value;
 };
 
-export function createRightHelix(ctx:CanvasRenderingContext2D) {
+export function createRightHelix(ctx:CanvasRenderingContext2D,batch?:ParticleBatch) {
   // Stable particle slots are independent of the back-to-front paint order.
   const particles=new Float32Array(COUNT*2*STRIDE);
   const order=Uint16Array.from({length:COUNT*2},(_,i)=>i);
@@ -20,6 +21,7 @@ export function createRightHelix(ctx:CanvasRenderingContext2D) {
   soft.addColorStop(0,'#535a4f');soft.addColorStop(.28,'rgba(83,90,79,.6)');
   soft.addColorStop(.6,'rgba(83,90,79,.12)');soft.addColorStop(1,'rgba(83,90,79,0)');
   g.fillStyle=soft;g.fillRect(0,0,48,48);
+  batch?.texture(grain);
   function render(frame:number,time:number,opacity:number):void {
     const phase=-80/PITCH*TAU-(time-4.8)*.46+correction(frame);
     const flowOffset=(time-2.6)*-.01;
@@ -44,7 +46,9 @@ export function createRightHelix(ctx:CanvasRenderingContext2D) {
     order.sort((a,b)=>particles[a*STRIDE+2]-particles[b*STRIDE+2]);
     ctx.fillStyle='#535a4f';
     for(const id of order) {
-      const j=id*STRIDE,r=particles[j+3];ctx.globalAlpha=particles[j+4];
+      const j=id*STRIDE,r=particles[j+3];
+      if(batch?.active){batch.grain(particles[j],particles[j+1],r*3.1,particles[j+4]);batch.circle(particles[j],particles[j+1],r*.55,particles[j+4]*.1,'core');continue;}
+      ctx.globalAlpha=particles[j+4];
       ctx.drawImage(grain,particles[j]-r*3.1,particles[j+1]-r*3.1,r*6.2,r*6.2);
       ctx.globalAlpha=particles[j+4]*.1;
       ctx.beginPath();ctx.arc(particles[j],particles[j+1],r*.55,0,TAU);ctx.fill();

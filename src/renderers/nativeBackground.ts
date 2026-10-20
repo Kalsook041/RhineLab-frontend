@@ -1,6 +1,7 @@
 import { waveFit } from './waveFit';
 import { createTerrainGL, type TerrainGL } from './terrainGL';
 import { createOpeningParticles, type GlobePoint } from './openingParticles';
+import {createParticleBatch,type ParticleBatch} from './particleBatch';
 /** Source frames control form; the independent motion clock also runs during idle. No frame textures. */
 export type NativeBackground = { render(frame: number, motionTime: number, motionFrame?: number): void; resize(scale: number): void; destroy(): void };
 const clamp = (n: number) => Math.max(0, Math.min(1, n));
@@ -15,7 +16,9 @@ export async function createNativeBackground(canvas: HTMLCanvasElement, fail: ()
   try { map = await (await fetch('/assets/native/world-points.json')).json(); } catch { fail(); }
   let globeGeometry:GlobePoint[]=[];
   try { const response=await fetch('/assets/native/globe-points.json');if(response.ok)globeGeometry=await response.json(); } catch { /* The map supplies a procedural fallback. */ }
-  const opening=createOpeningParticles(ctx,globeGeometry,map);
+  let particles:ParticleBatch|undefined;
+  try{particles=createParticleBatch();}catch{particles=undefined;}
+  const opening=createOpeningParticles(ctx,globeGeometry,map,particles);
   let resolution = 1, destroyed = false;
   // Only tiny background digits are cached from live fonts. This canvas is
   // generated locally, never loaded from a screenshot or a media asset.
@@ -109,8 +112,10 @@ export async function createNativeBackground(canvas: HTMLCanvasElement, fail: ()
       ctx.setTransform(resolution, 0, 0, resolution, 0, 0); ctx.globalAlpha = 1; ctx.shadowBlur = 0;
       const dark = frame >= 311 || frame === 303 || frame === 304;
       ctx.fillStyle = dark ? '#222421' : '#e5e4dd'; ctx.fillRect(0, 0, 1920, 1080);
+      if(frame<303)particles?.begin(canvas.width,canvas.height);
       if (frame < 61) opening.sphere(motionFrame,motionTime);
       if (frame >= 72 && frame <= 302) opening.orbits(motionFrame,motionTime);
+      if(frame<303){if(particles)particles.flush(ctx);else canvas.dataset.particleRenderer='canvas2d';}
       if(frame===308) { ctx.fillStyle='#222421';ctx.shadowColor='#222421';ctx.shadowBlur=20;ctx.fillRect(0,120,1920,840);ctx.shadowBlur=0; }
       if (frame >= 308 && frame <= 377) waves(motionTime, (.3+.7*ramp(motionFrame, 308, 311)) * (1 - ramp(motionFrame, 375, 378)));
       terrainCanvas.hidden=true;
@@ -123,6 +128,6 @@ export async function createNativeBackground(canvas: HTMLCanvasElement, fail: ()
         const vignette = ctx.createRadialGradient(960, 530, 470, 960, 530, 1180); vignette.addColorStop(0, 'rgba(255,255,255,0)'); vignette.addColorStop(1, 'rgba(255,255,247,.2)'); ctx.fillStyle = vignette; ctx.fillRect(0, 0, 1920, 1080);
       }
     },
-    destroy() { destroyed = true; canvas.width = 0; canvas.height = 0;digits.width=0;digits.height=0;gpu?.destroy(); },
+    destroy() { destroyed = true; canvas.width = 0; canvas.height = 0;digits.width=0;digits.height=0;gpu?.destroy();particles?.destroy(); },
   };
 }

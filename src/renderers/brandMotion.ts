@@ -15,6 +15,9 @@ export function createBrandMotion(){
  const get=(id:string)=>document.getElementById(id)!;
  const labels=['brand-title','brand-small','brand-os','brand-os-bold'].map(get);
  const squares=Array.from(get('brand-squares').querySelectorAll('rect'));
+ let marginX=0,marginY=0;
+ const resize=(width:number,height:number)=>{const scale=Math.min(width/1920,height/1080);marginX=(width/scale-1920)/2;marginY=(height/scale-1080)/2;};
+ resize(stage.clientWidth,stage.clientHeight);
  const set=(node:Element,key:string,value:string|number)=>{const text=String(value);if(node.getAttribute(key)!==text)node.setAttribute(key,text);};
  const titleAlpha=[[121,0],[129,0],[132,.025],[135,.061],[138,.11],[141,.214],[144,.276],[147,.465],[150,.693],[153,.934],[156,1]];
  const smallAlpha=[[121,0],[141,0],[144,.035],[147,.095],[150,.3],[153,.49],[156,.59],[159,.77],[162,.91],[166,1]];
@@ -24,13 +27,11 @@ export function createBrandMotion(){
  const osX=[[121,180],[141,135],[144,110],[147,78],[150,55],[153,37],[156,27],[159,17],[162,11],[168,3],[180,0]];
  const blurKeys=[[[121,4],[132,4],[138,2.3],[144,1.1],[150,.35],[156,0]],[[121,12],[141,12],[144,7],[147,2.5],[150,.5],[153,.15],[156,0]],[[121,12],[141,12],[144,3.5],[147,1.5],[150,.55],[153,.15],[156,0]]];
  const filters=['brand-title','brand-small','brand-os'];
- return{render(frame:number,motionTime=frame/30,reduced=false){
+ return{resize,render(frame:number,motionTime=frame/30,reduced=false){
   const visible=frame>=121&&frame<305;
   brand.style.visibility=visible?'visible':'hidden';
   if(!visible)return;
   const fade=1-clamp((frame-300)/5),entry=reduced?180:Math.min(180,motionTime*30);
-  const scale=Math.min(stage.clientWidth/1920,stage.clientHeight/1080);
-  const marginX=(stage.clientWidth/scale-1920)/2,marginY=(stage.clientHeight/scale-1080)/2;
   const drift=-.25*Math.max(0,frame-180);
   set(brand,'transform',`translate(${drift-marginX} ${-marginY})`);
   brand.style.opacity=String(fade);

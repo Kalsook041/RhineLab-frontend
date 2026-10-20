@@ -20,3 +20,17 @@ test('同一个原片帧内圆弧、请求框和WELCOME仍有中间姿态，关�
  await at(252.5);await expect(page.locator('#request-frame')).toHaveCSS('visibility','hidden');
  await at(144);expect(await page.evaluate(()=>window.__tangent.getState())).toBe('waiting');
 });
+
+test('WELCOME播放循环不再读取布局尺寸；窗口变化由ResizeObserver更新',async({page})=>{
+ await page.goto('/');await page.waitForFunction(()=>Boolean(window.__tangent));await page.evaluate(()=>window.__tangent.seek(16.4));
+ await page.evaluate(()=>{
+  const stage=document.getElementById('stage')!;let reads=0;
+  for(const key of ['clientWidth','clientHeight']){
+   const descriptor=Object.getOwnPropertyDescriptor(Element.prototype,key)!;
+   Object.defineProperty(stage,key,{configurable:true,get(){reads++;return descriptor.get!.call(stage);}});
+  }Object.assign(window,{__layoutReads:()=>reads});
+ });
+ await page.keyboard.press('Space');await page.waitForTimeout(650);
+ const info=await page.evaluate(()=>({time:window.__tangent.getTime(),reads:(window as typeof window&{__layoutReads:()=>number}).__layoutReads()}));
+ expect(info.time).toBeGreaterThan(16.7);expect(info.reads).toBe(0);
+});
